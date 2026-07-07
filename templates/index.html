@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Credit Card Approval Prediction</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1>💳 Credit Card Approval Prediction System</h1>
+        <p style="text-align:center;">
+            Machine Learning Based Credit Risk Assessment
+        </p>
+
+        <form action="/predict" method="POST">
+
+            <label>Gender</label>
+            <select name="gender" required>
+                <option value="M">Male</option>
+                <option value="F">Female</option>
+            </select>
+
+            <label>Own Car</label>
+            <select name="own_car" required>
+                <option value="Y">Yes</option>
+                <option value="N">No</option>
+            </select>
+
+            <label>Own House</label>
+            <select name="own_house" required>
+                <option value="Y">Yes</option>
+                <option value="N">No</option>
+            </select>
+
+            <label>Annual Income</label>
+            <input type="number" name="income" required>
+
+            <label><b>Number of Children</b></label>
+            <select name="children" required>
+                <option value="">Select</option>
+                <option>0</option>
+                <option>1</option>
+                <option>2</option>
+                <option>3</option>
+                <option>4</option>
+                <option>5</option>
+                <option>6</option>
+                <option>7</option>
+                <option>8</option>
+                <option>9</option>
+                <option>10</option>
+            </select>
+
+            <label>Education</label>
+            <select name="education" required>
+                <option value="Higher education">Higher Education</option>
+                <option value="Secondary / secondary special">Secondary</option>
+                <option value="Incomplete higher">Incomplete Higher</option>
+                <option value="Lower secondary">Lower Secondary</option>
+                <option value="Academic degree">Academic Degree</option>
+            </select>
+
+            <label>Occupation</label>
+            <select name="occupation" required>
+                <option value="Laborers">Laborers</option>
+                <option value="Core staff">Core Staff</option>
+                <option value="Managers">Managers</option>
+                <option value="Drivers">Drivers</option>
+                <option value="Sales staff">Sales Staff</option>
+                <option value="Security staff">Security Staff</option>
+                <option value="Unknown">Unknown</option>
+            </select>
+
+            <label><b>Family Members</b></label>
+            <select name="family_members" required>
+                <option value="">Select</option>
+                <option>1</option>
+                <option>2</option>
+                <option>3</option>
+                <option>4</option>
+                <option>5</option>
+                <option>6</option>
+                <option>7</option>
+                <option>8</option>
+                <option>9</option>
+                <option>10</option>
+                <option>11</option>
+                <option>12</option>
+                <option>13</option>
+                <option>14</option>
+                <option>15</option>
+                <option>16</option>
+                <option>17</option>
+                <option>18</option>
+                <option>19</option>
+                <option>20</option>
+            </select>
+
+            <br><br>
+
+            <button type="submit">Predict</button>
+
+        </form>
+
+        {% if prediction %}
+        <div class="result">
+            {{ prediction|safe }}
+        </div>
+        {% endif %}
+
+    </div>
+
+</body>
+
+</html>

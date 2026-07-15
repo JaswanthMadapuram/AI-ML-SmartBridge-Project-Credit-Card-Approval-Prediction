@@ -1,14 +1,37 @@
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import LabelEncoder
+import joblib
+
 from sklearn.model_selection import train_test_split
 from imblearn.over_sampling import SMOTE
 
-#APPLICATION DATASET
-application_df = pd.read_csv("dataset/application_record.csv")
-credit_df = pd.read_csv("dataset/credit_record.csv")
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
 
-#CREDIT DATASET
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    classification_report,
+    confusion_matrix
+)
+
+
+# ==========================================
+# LOAD DATASETS
+# ==========================================
+
+application_df = pd.read_csv(
+    "dataset/application_record.csv"
+)
+
+credit_df = pd.read_csv(
+    "dataset/credit_record.csv"
+)
+
 print("=" * 50)
 print("APPLICATION DATASET")
 print("=" * 50)
@@ -17,11 +40,7 @@ print(application_df.head())
 
 print("\nShape:", application_df.shape)
 
-print("\nColumns:")
-print(application_df.columns)
-
-print("\n")
-print("=" * 50)
+print("\n" + "=" * 50)
 print("CREDIT DATASET")
 print("=" * 50)
 
@@ -29,63 +48,64 @@ print(credit_df.head())
 
 print("\nShape:", credit_df.shape)
 
-print("\nColumns:")
-print(credit_df.columns)
 
-print("\nMissing Values in Application Dataset")
-print(application_df.isnull().sum())
-print("\nMissing Values in Credit Dataset")
-print(credit_df.isnull().sum())
+# ==========================================
+# CREATE TARGET
+# ==========================================
 
-print("\n" + "=" * 50)
-print("STATUS VALUE COUNTS")
-print("=" * 50)
-print(credit_df["STATUS"].value_counts())
-
-# Convert STATUS into Good (0) and Bad (1)
 credit_df["TARGET"] = credit_df["STATUS"].apply(
-    lambda x: 1 if x in ["1", "2", "3", "4", "5"] else 0
+    lambda x: 1
+    if str(x) in ["1", "2", "3", "4", "5"]
+    else 0
 )
+
 print("\nTARGET VALUE COUNTS")
-print(credit_df["TARGET"].value_counts())
 
-# Keep one TARGET value per customer
-credit_target = credit_df.groupby("ID")["TARGET"].max().reset_index()
+print(
+    credit_df["TARGET"].value_counts()
+)
 
-print("\nCredit Target Shape:")
-print(credit_target.shape)
 
-# Merge with application dataset
-final_df = application_df.merge(credit_target, on="ID", how="inner")
+# ==========================================
+# ONE TARGET PER CUSTOMER
+# ==========================================
+
+credit_target = (
+    credit_df
+    .groupby("ID")["TARGET"]
+    .max()
+    .reset_index()
+)
+
+
+# ==========================================
+# MERGE DATASETS
+# ==========================================
+
+final_df = application_df.merge(
+    credit_target,
+    on="ID",
+    how="inner"
+)
+
 print("\nMerged Dataset Shape:")
-print(final_df.shape)
-print("\nFirst 5 Rows:")
-print(final_df.head())
+
+print(
+    final_df.shape
+)
+
+print("\nFinal Target Counts:")
+
+print(
+    final_df["TARGET"].value_counts()
+)
 
 
-print("\n" + "=" * 50)
-print("DATA PREPROCESSING")
-print("=" * 50)
-# Fill missing values
-final_df["OCCUPATION_TYPE"] = final_df["OCCUPATION_TYPE"].fillna("Unknown")
+# ==========================================
+# SELECT FEATURES
+# ==========================================
 
-""" Encode categorical columns
-le = LabelEncoder()
-for col in final_df.columns:
-    if final_df[col].dtype == "object":
-        final_df[col] = le.fit_transform(final_df[col])"""
-
-# Remove ID column
-final_df = final_df.drop("ID", axis=1)
-print("\nDataset after preprocessing:")
-print(final_df.head())
-print("\nDataset Shape:")
-print(final_df.shape)
-
-print("\n" + "=" * 50)
-print("FEATURES AND TARGET")
-print("=" * 50)
-selected_features = [
+features = [
     "CODE_GENDER",
     "FLAG_OWN_CAR",
     "FLAG_OWN_REALTY",
@@ -93,151 +113,337 @@ selected_features = [
     "CNT_CHILDREN",
     "NAME_EDUCATION_TYPE",
     "OCCUPATION_TYPE",
-    "CNT_FAM_MEMBERS"
+    "CNT_FAM_MEMBERS",
+    "DAYS_BIRTH",
+    "DAYS_EMPLOYED",
+    "NAME_INCOME_TYPE",
+    "NAME_FAMILY_STATUS",
+    "NAME_HOUSING_TYPE"
 ]
 
-X = final_df[selected_features]
-y = final_df["TARGET"]
-print("Features Shape:", X.shape)
-print("Target Shape:", y.shape)
+X = final_df[features].copy()
 
-#Filling Missing Values
-X = X.fillna("Unknown")
+y = final_df["TARGET"].copy()
 
-# Convert categorical columns into numbers
-X = pd.get_dummies(X, drop_first=True)
-print("\nAfter Encoding:")
-print(X.head())
+
+# ==========================================
+# HANDLE MISSING VALUES
+# ==========================================
+
+categorical_columns = X.select_dtypes(
+    include=["object"]
+).columns
+
+numeric_columns = X.select_dtypes(
+    exclude=["object"]
+).columns
+
+
+X[categorical_columns] = (
+    X[categorical_columns]
+    .fillna("Unknown")
+)
+
+
+X[numeric_columns] = (
+    X[numeric_columns]
+    .fillna(
+        X[numeric_columns].median()
+    )
+)
+
+
+# ==========================================
+# ONE HOT ENCODING
+# ==========================================
+
+X = pd.get_dummies(
+    X,
+    drop_first=True
+)
+
 print("\nEncoded Feature Shape:")
-print(X.shape)
 
-print("\n" + "=" * 50)
-print("TRAIN TEST SPLIT")
-print("=" * 50)
-from sklearn.model_selection import train_test_split
-from imblearn.over_sampling import SMOTE
+print(
+    X.shape
+)
 
-# Split data
+
+# ==========================================
+# TRAIN TEST SPLIT
+# ==========================================
+
 X_train, X_test, y_train, y_test = train_test_split(
     X,
     y,
-    test_size=0.2,
+    test_size=0.20,
     random_state=42,
     stratify=y
 )
 
-# Apply SMOTE only on training data
-smote = SMOTE(random_state=42)
 
-X_train_smote, y_train_smote = smote.fit_resample(
-    X_train,
-    y_train
+print("\nTraining Shape:")
+
+print(
+    X_train.shape
 )
 
-print("\n" + "="*50)
-print("SMOTE APPLIED")
-print("="*50)
+print("\nTesting Shape:")
 
-print("Original Training Shape :", X_train.shape)
-print("Balanced Training Shape :", X_train_smote.shape)
+print(
+    X_test.shape
+)
 
-print("\nBalanced Target Counts:")
-print(y_train_smote.value_counts())
-print("Training Features:", X_train.shape)
-print("Testing Features :", X_test.shape)
-print("Training Labels  :", y_train.shape)
-print("Testing Labels   :", y_test.shape)
 
-print("\n" + "=" * 50)
-print("MODEL TRAINING")
-print("=" * 50)
+# ==========================================
+# SMOTE
+# ==========================================
 
-from sklearn.linear_model import LogisticRegression
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier
-
-# Logistic Regression
-lr = LogisticRegression(max_iter=1000)
-lr.fit(X_train, y_train)
-
-# Decision Tree
-dt = DecisionTreeClassifier(random_state=42)
-dt.fit(X_train, y_train)
-
-# Random Forest
-rf = RandomForestClassifier(
-    n_estimators=300,
-    max_depth=12,
-    min_samples_split=5,
-    min_samples_leaf=2,
-    class_weight="balanced",
+smote = SMOTE(
+    sampling_strategy=1.0,
     random_state=42
 )
 
-rf.fit(X_train_smote, y_train_smote)
-print("All Models Trained Successfully!")
 
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+X_train_smote, y_train_smote = (
+    smote.fit_resample(
+        X_train,
+        y_train
+    )
+)
 
-# Predictions
-lr_pred = lr.predict(X_test)
-dt_pred = dt.predict(X_test)
-rf_pred = rf.predict(X_test)
 
-print("\nPrediction Counts")
-print(pd.Series(rf_pred).value_counts())
-print("\nActual Counts")
-print(y_test.value_counts())
+print("\nSMOTE Target Counts:")
 
-print("\n" + "="*50)
-print("MODEL ACCURACY")
-print("="*50)
+print(
+    y_train_smote.value_counts()
+)
 
-print("Logistic Regression Accuracy :", accuracy_score(y_test, lr_pred))
-print("Decision Tree Accuracy       :", accuracy_score(y_test, dt_pred))
-print("Random Forest Accuracy       :", accuracy_score(y_test, rf_pred))
 
-print("\n" + "="*50)
-print("RANDOM FOREST CLASSIFICATION REPORT")
-print("="*50)
+# ==========================================
+# LOGISTIC REGRESSION
+# ==========================================
 
-print(classification_report(y_test, rf_pred))
-print("\nPrediction Probabilities")
-print(rf.predict_proba(X_test[:10]))
-print("\nModel Classes")
-print(rf.classes_)
+print("\nTraining Logistic Regression...")
 
-print("\nConfusion Matrix:")
-print(confusion_matrix(y_test, rf_pred))
+lr = LogisticRegression(
+    max_iter=15000
+)
 
-print("\nSample Predictions")
+lr.fit(
+    X_train_smote,
+    y_train_smote
+)
 
-sample = X_test.iloc[:20]
 
-sample_pred = rf.predict(sample)
+# ==========================================
+# DECISION TREE
+# ==========================================
 
-sample_prob = rf.predict_proba(sample)
+print("Training Decision Tree...")
 
-for i in range(len(sample)):
-    print(
-        f"Customer {i+1} -> Prediction={sample_pred[i]}, "
-        f"Approved={sample_prob[i][0]*100:.2f}%, "
-        f"Rejected={sample_prob[i][1]*100:.2f}%"
+dt = DecisionTreeClassifier(
+    random_state=42
+)
+
+dt.fit(
+    X_train_smote,
+    y_train_smote
+)
+
+
+# ==========================================
+# RANDOM FOREST
+# ==========================================
+
+print("Training Random Forest...")
+
+rf = RandomForestClassifier(
+    n_estimators=300,
+    max_depth=12,
+    min_samples_split=7,
+    min_samples_leaf=5,
+    class_weight="balanced",
+    random_state=45,
+    n_jobs=-1
+)
+
+rf.fit(
+    X_train_smote,
+    y_train_smote
+)
+
+
+# ==========================================
+# XGBOOST
+# ==========================================
+
+print("Training XGBoost...")
+
+xgb = XGBClassifier(
+    n_estimators=600,
+    learning_rate=0.05,
+    max_depth=5,
+    min_child_weight=2,
+    subsample=0.9,
+    colsample_bytree=0.9,
+    gamma=0.2,
+    objective="binary:logistic",
+    eval_metric="logloss",
+    random_state=42
+)
+
+xgb.fit(
+    X_train_smote,
+    y_train_smote
+)
+
+
+print("\nALL MODELS TRAINED SUCCESSFULLY!")
+
+
+# ==========================================
+# PREDICTIONS
+# ==========================================
+
+lr_pred = lr.predict(
+    X_test
+)
+
+dt_pred = dt.predict(
+    X_test
+)
+
+rf_pred = rf.predict(
+    X_test
+)
+
+xgb_pred = xgb.predict(
+    X_test
+)
+
+
+# ==========================================
+# MODEL COMPARISON
+# ==========================================
+
+print("\n" + "=" * 50)
+print("MODEL COMPARISON")
+print("=" * 50)
+
+
+models_predictions = {
+    "Logistic Regression": lr_pred,
+    "Decision Tree": dt_pred,
+    "Random Forest": rf_pred,
+    "XGBoost": xgb_pred
+}
+
+
+for model_name, prediction in models_predictions.items():
+
+    accuracy = accuracy_score(
+        y_test,
+        prediction
     )
 
+    precision = precision_score(
+        y_test,
+        prediction,
+        zero_division=0
+    )
+
+    recall = recall_score(
+        y_test,
+        prediction,
+        zero_division=0
+    )
+
+    f1 = f1_score(
+        y_test,
+        prediction,
+        zero_division=0
+    )
+
+    print(
+        f"\n{model_name}"
+    )
+
+    print(
+        f"Accuracy  : {accuracy:.4f}"
+    )
+
+    print(
+        f"Precision : {precision:.4f}"
+    )
+
+    print(
+        f"Recall    : {recall:.4f}"
+    )
+
+    print(
+        f"F1 Score  : {f1:.4f}"
+    )
+
+
 # ==========================================
-# SAVE BEST MODEL
+# RANDOM FOREST REPORT
 # ==========================================
 
-import joblib
-joblib.dump(rf, "credit_card_approval_model.pkl")
+print("\n" + "=" * 50)
+print("RANDOM FOREST REPORT")
+print("=" * 50)
+
+
+print(
+    classification_report(
+        y_test,
+        rf_pred,
+        target_names=[
+            "LOWER RISK",
+            "HIGHER RISK"
+        ],
+        zero_division=0
+    )
+)
+
+
+print("\nConfusion Matrix:")
+
+print(
+    confusion_matrix(
+        y_test,
+        rf_pred
+    )
+)
+
+
+# ==========================================
+# SAVE RANDOM FOREST MODEL
+# ==========================================
+
+joblib.dump(
+    rf,
+    "credit_card_model.pkl"
+)
+
+
+joblib.dump(
+    X.columns.tolist(),
+    "feature_columns.pkl"
+)
+
+
 print("\n" + "=" * 50)
 print("MODEL SAVED SUCCESSFULLY")
 print("=" * 50)
-print("Saved as: credit_card_approval_model.pkl")
 
-import joblib
+print(
+    "Model saved as: "
+    "credit_card_model.pkl"
+)
 
-# Save feature names
-joblib.dump(X.columns.tolist(), "feature_columns.pkl")
-print("Feature columns saved successfully!")
+print(
+    "Feature columns saved as: "
+    "feature_columns.pkl"
+)

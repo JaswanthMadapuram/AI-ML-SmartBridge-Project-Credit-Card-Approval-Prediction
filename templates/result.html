@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prediction Result</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- Main Result Card -->
+
+    <div class="result-card">
+
+        {% if "APPROVED" in decision %}
+
+            <div class="success-icon">✅</div>
+
+        {% else %}
+
+            <div class="reject-icon">❌</div>
+
+        {% endif %}
+
+        <h1>{{ decision }}</h1>
+
+        <p class="subtitle">
+
+            Based on the applicant information, the Machine Learning model
+            predicts the credit card application result.
+
+        </p>
+
+        {% if "APPROVED" in decision %}
+
+            <h3>Approval Confidence</h3>
+
+            <div class="progress">
+
+                <div class="progress-green"
+                     style="width:{{ approval }}%;">
+
+                    {{ approval }}%
+
+                </div>
+
+            </div>
+
+        {% else %}
+
+            <h3>Rejection Confidence</h3>
+
+            <div class="progress">
+
+                <div class="progress-red"
+                     style="width:{{ rejection }}%;">
+
+                    {{ rejection }}%
+
+                </div>
+
+            </div>
+
+        {% endif %}
+
+    </div>
+
+    <br>
+
+    <!-- Summary -->
+
+    <table class="summary-table">
+
+        <tr>
+
+            <th>Prediction</th>
+
+            <td>{{ decision }}</td>
+
+            <th>Model Confidence</th>
+
+            <td>
+
+                {% if "APPROVED" in decision %}
+
+                    {{ approval }}%
+
+                {% else %}
+
+                    {{ rejection }}%
+
+                {% endif %}
+
+            </td>
+
+        </tr>
+
+    </table>
+
+    <br>
+
+    <!-- Two Cards -->
+
+    <div class="card-container">
+
+        <!-- Applicant Details -->
+
+        <div class="card">
+
+            <h2>👤 Applicant Details</h2>
+
+            <table>
+
+                <tr><td>Gender</td><td>{{ gender }}</td></tr>
+                <tr><td>Age</td><td>{{ age }} Years</td></tr>
+                <tr><td>Education</td><td>{{ education }}</td></tr>
+                <tr><td>Occupation</td><td>{{ occupation }}</td></tr>
+                <tr><td>Employment Experience</td><td>{{ employment_years }} Years</td></tr>
+                <tr><td>Annual Income</td><td>₹ {{ income }}</td></tr>
+                <tr><td>Income Type</td><td>{{ income_type }}</td></tr>
+                <tr><td>Family Status</td><td>{{ family_status }}</td></tr>
+                <tr><td>Housing Type</td><td>{{ housing_type }}</td></tr>
+                <tr><td>Own Car</td><td>{{ own_car }}</td></tr>
+                <tr><td>Own House</td><td>{{ own_house }}</td></tr>
+                <tr><td>Family Members</td><td>{{ family_members }}</td></tr>
+                <tr><td>Children</td><td>{{ children }}</td></tr>
+
+            </table>
+
+        </div>
+
+        <!-- Right Card -->
+
+        <div class="card">
+
+            {% if "APPROVED" in decision %}
+
+                <h2>🛡 Approval Summary</h2>
+
+                <p>✔ Credit Card Eligible</p>
+
+                <p>✔ Low Risk Profile</p>
+
+                <p>✔ Recommendation : Approved</p>
+
+            {% else %}
+
+                <h2>⚠ Application Summary</h2>
+
+                <p><b>Risk Level :</b> {{ risk }}</p>
+
+                <br>
+
+                <h3>General Suggestions</h3>
+
+                <ul>
+
+                    <li>Improve annual income.</li>
+
+                    <li>Maintain stable employment.</li>
+
+                    <li>Reduce financial liabilities if applicable.</li>
+
+                    <li>Verify application details before reapplying.</li>
+
+                    <li>Reapply after improving your financial profile.</li>
+
+                </ul>
+
+            {% endif %}
+
+            <br>
+
+            <p><b>Model Used :</b> {{ model_name }}</p>
+
+        </div>
+
+    </div>
+
+    <br>
+
+    <a href="/prediction">
+
+        <button class="predict-btn">
+
+            🔄 Predict Again
+
+        </button>
+
+    </a>
+
+    <br><br>
+
+    <a href="/">
+
+        <button class="home-btn">
+
+            🏠 Back to Home
+
+        </button>
+
+    </a>
+
+</div>
+
+</body>
+
+</html>
